@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const Quote = () => {
   const [formData, setFormData] = useState({
@@ -17,7 +18,9 @@ const Quote = () => {
     message: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validação simples
@@ -26,16 +29,31 @@ const Quote = () => {
       return;
     }
 
-    toast.success("Orçamento enviado com sucesso! Entraremos em contato em breve.");
-    
-    // Limpar formulário
-    setFormData({
-      name: "",
-      phone: "",
-      email: "",
-      service: "",
-      message: "",
-    });
+    setIsSubmitting(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('send-quote-email', {
+        body: formData
+      });
+
+      if (error) throw error;
+
+      toast.success("Orçamento enviado com sucesso! Entraremos em contato em breve.");
+      
+      // Limpar formulário
+      setFormData({
+        name: "",
+        phone: "",
+        email: "",
+        service: "",
+        message: "",
+      });
+    } catch (error) {
+      console.error("Erro ao enviar orçamento:", error);
+      toast.error("Erro ao enviar orçamento. Tente novamente.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleWhatsApp = () => {
@@ -144,9 +162,9 @@ const Quote = () => {
 
                   {/* Botões */}
                   <div className="flex flex-col sm:flex-row gap-4">
-                    <Button type="submit" variant="hero" size="lg" className="flex-1">
+                    <Button type="submit" variant="hero" size="lg" className="flex-1" disabled={isSubmitting}>
                       <Send className="mr-2 h-5 w-5" />
-                      Solicitar Orçamento Agora
+                      {isSubmitting ? "Enviando..." : "Solicitar Orçamento Agora"}
                     </Button>
                     <Button type="button" onClick={handleWhatsApp} variant="outline" size="lg" className="flex-1 bg-[#25D366] hover:bg-[#20BA5A] text-white border-[#25D366]">
                       <MessageCircle className="mr-2 h-5 w-5" />
